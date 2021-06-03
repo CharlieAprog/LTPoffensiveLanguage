@@ -1,0 +1,24 @@
+TODO
+
+Preprocessing: 
+Have data split nicely into training and testing
+
+EMBEDDING LAYER
+- embed all of the words into vectors
+
+model
+- has ability to save weights
+- has ability to load weights
+
+
+
+LSTM (Panos, Charlie)
+- define model
+- include embeddings
+- improve accuracy
+
+TRANSFORMER (Jan, Richy)
+- define model
+- include embeddings
+- improve accuracy
+
