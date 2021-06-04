@@ -6,3 +6,7 @@ training_labels = dataset[['subtask_a']].to_numpy()
 #TODO set up validation set
 # set up testing set
 # set up 
+
+pd.read_csv('data/training.tsv', sep='\t')
+
+print(a)
