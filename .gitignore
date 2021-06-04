@@ -1,5 +1,9 @@
 #custom
 data/word2vec/
+<<<<<<< HEAD
+=======
+
+>>>>>>> fc6a56ae28f357e5ca747fe0a86a6f48a5ca43ed
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
