@@ -1,6 +1,10 @@
 from nltk.tokenize import word_tokenize
 from tqdm import tqdm
 import pandas as pd
+import nltk
+from nltk.corpus import stopwords
+from nltk import word_tokenize
+from nltk import sent_tokenize
 from gensim.models import KeyedVectors
 from nltk.tokenize import word_tokenize
 import operator 
@@ -47,35 +51,38 @@ def apply_preprocessing(dataset):
     dataset = [word_tokenize(sentence) for sentence in dataset]
     return dataset
 
-dataset = pd.read_csv('data/training.tsv', sep='\t')
-all_tweets = dataset['tweet'].to_numpy()
-all_labels = dataset['subtask_a'].to_numpy()
-test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:,1]
-test_labels = pd.read_csv('data/labels-levela.csv').to_numpy()[:,1]
 
-sentences = [word_tokenize(sentence) for sentence in all_tweets]
-vocab = build_vocab(sentences)
-print({k: vocab[k] for k in list(vocab)[:50]})
-#print(sentences)
+if __name__ == "__main__":
 
-#import GLOVE cleaned up glove embeddings
-glovepath = 'embeds.txt'
-print('loading embeddings...')
-embeddings_index = KeyedVectors.load_word2vec_format(glovepath, binary=False)
-oov = check_coverage(vocab,embeddings_index)
+    dataset = pd.read_csv('data/training.tsv', sep='\t')
+    all_tweets = dataset['tweet'].to_numpy()
+    all_labels = dataset['subtask_a'].to_numpy()
+    test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:,1]
+    test_labels = pd.read_csv('data/labels-levela.csv').to_numpy()[:,1]
 
-#remove punctuations,lowerize words, tokenize sentences into words
-all_tweets = apply_preprocessing(all_tweets)
-test_tweets = apply_preprocessing(test_tweets)
-print(test_tweets[0])
+    sentences = [word_tokenize(sentence) for sentence in all_tweets]
+    vocab = build_vocab(sentences)
+    print({k: vocab[k] for k in list(vocab)[:50]})
+    #print(sentences)
 
-#check embeddings for words in dataset after preprocessing
-newvocab=build_vocab(all_tweets)
-check_coverage(newvocab,embeddings_index)
+    #import GLOVE cleaned up glove embeddings
+    glovepath = 'embeds.txt'
+    print('loading embeddings...')
+    embeddings_index = KeyedVectors.load_word2vec_format(glovepath, binary=False)
+    oov = check_coverage(vocab,embeddings_index)
 
-print(newvocab)
-#data split into dev and train
-dev_tweets = all_tweets[:1000]
-dev_labels = all_labels[:1000]
-train_tweets = all_tweets[1000:]
-train_labels = all_labels[1000:]
+    #remove punctuations,lowerize words, tokenize sentences into words
+    all_tweets = apply_preprocessing(all_tweets)
+    test_tweets = apply_preprocessing(test_tweets)
+    print(test_tweets[0])
+
+    #check embeddings for words in dataset after preprocessing
+    newvocab=build_vocab(all_tweets)
+    check_coverage(newvocab,embeddings_index)
+
+    print(newvocab)
+    #data split into dev and train
+    dev_tweets = all_tweets[:1000]
+    dev_labels = all_labels[:1000]
+    train_tweets = all_tweets[1000:]
+    train_labels = all_labels[1000:]
