@@ -22,6 +22,19 @@ for tweet in test_tweets:
 embedded_words = []
 embedded_vecs = []
 
+text_file = open('embeds.txt', "r")
+lines = text_file.readlines()
+count = 0
+
+for line in lines:
+    line = line.split(' ')
+    embedded_words.append(line[0])
+
+for word in words:
+    if word not in embedded_words:
+        print(word)
+    
+
 text_file = open('data/word2vec/25d.txt', "r")
 lines = text_file.readlines()
 count = 0
