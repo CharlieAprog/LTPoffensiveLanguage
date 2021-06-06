@@ -40,6 +40,12 @@ def build_vocab(sentences, verbose =  True):
                 vocab[word] = 1
     return vocab
 
+def apply_preprocessing(dataset):
+    table = str.maketrans('', '', "!#$%&'()*+-./’:;<=>?[\]^_`{|}~")
+    dataset = [w.translate(table) for w in dataset]
+    dataset = [word.lower() for word in dataset]
+    dataset = [word_tokenize(sentence) for sentence in dataset]
+    return dataset
 
 dataset = pd.read_csv('data/training.tsv', sep='\t')
 all_tweets = dataset['tweet'].to_numpy()
@@ -52,21 +58,22 @@ vocab = build_vocab(sentences)
 print({k: vocab[k] for k in list(vocab)[:50]})
 #print(sentences)
 
-#import GLOVE embeddings (change later too cleaned up version)
-glovepath = 'data/word2vec/glove.twitter.27B.25d.txt'
+#import GLOVE cleaned up glove embeddings
+glovepath = 'embeds.txt'
 print('loading embeddings...')
 embeddings_index = KeyedVectors.load_word2vec_format(glovepath, binary=False)
 oov = check_coverage(vocab,embeddings_index)
 
 #remove punctuations,lowerize words, tokenize sentences into words
-table = str.maketrans('', '', "!#$%&'()*+-./’:;<=>?[\]^_`{|}~")
-all_tweets = [w.translate(table) for w in all_tweets]
-all_tweets = [word.lower() for word in all_tweets]
-all_tweets = [word_tokenize(sentence) for sentence in all_tweets]
+all_tweets = apply_preprocessing(all_tweets)
+test_tweets = apply_preprocessing(test_tweets)
+print(test_tweets[0])
 
+#check embeddings for words in dataset after preprocessing
 newvocab=build_vocab(all_tweets)
 check_coverage(newvocab,embeddings_index)
 
+print(newvocab)
 #data split into dev and train
 dev_tweets = all_tweets[:1000]
 dev_labels = all_labels[:1000]

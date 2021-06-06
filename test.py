@@ -1,5 +1,6 @@
 import pandas as pd
 from tqdm import tqdm
+from models.preprocess import apply_preprocessing
 dataset = pd.read_csv('data/training.tsv', sep='\t')
 test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:,1]
 all_tweets = dataset['tweet'].to_numpy()
@@ -11,27 +12,24 @@ training_tweets = all_tweets[1000:]
 
 words = []
 test_words= []
-for tweet in all_tweets:
-    for word in tweet.split(' '):
+for tweet in apply_preprocessing(all_tweets):
+    for word in tweet:
         words.append(word)
     
-for tweet in test_tweets:
-    for word in tweet.split(' '):
+for tweet in apply_preprocessing(test_tweets):
+    for word in tweet:
         words.append(word)
 
 embedded_words = []
 embedded_vecs = []
 
-text_file = open('data/word2vec/25d.txt', "r")
+text_file = open('data\word2vec\glove.twitter.27B.25d.txt', "r",encoding='utf-8')
 lines = text_file.readlines()
-count = 0
-for line in lines:
-    if count % 1000 == 0:
-        print(count/119354)
-    count += 1
+for line in tqdm(lines):
     line = line.split(' ')
-    if (line[0] in words or line[0] in test_words) and line[0] not in embedded_words:
-        embedded_words.append(line[0])
+    word = line[0]
+    if word in words and word not in embedded_words:
+        embedded_words.append(word)
         embedded_vecs.append(line[1:])
 
 size = len(embedded_words)
