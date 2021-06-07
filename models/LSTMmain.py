@@ -2,49 +2,14 @@ import pandas as pd
 import numpy as np
 import torch
 from torch import nn
+from preprocess import * 
+from gensim.models import KeyedVectors
 
-dataset = pd.read_csv('data/training.tsv', sep='\t')
-all_tweets = dataset['tweet'].to_numpy()
-all_labels = dataset['subtask_a'].to_numpy()
-
-test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:,1]
-test_labels = pd.read_csv('data/labels-levela.csv').to_numpy()[:,1]
-dev_tweets = all_tweets[:1000]
-dev_labels = all_labels[:1000]
-training_tweets = all_tweets[1000:]
-training_labels = all_labels[1000:]
-
-#lower case and tokenize
-print(training_tweets.shape)
-training_tweets = [word_tokenize(sent) for sent in training_tweets]
-for sentences in training_tweets:
-    for words in sentences:
-        words = words.lower()
-        print(words,'aaaaaaa')
-print(training_tweets[0])
-
-
-#TODO set up validation set
-# set up testing set
-# set up 
-batch_size = 1
-
-#Data loader
-train_loader = torch.utils.data.DataLoader(dataset=training_tweets, 
-                                           batch_size=batch_size, 
-                                           shuffle=True)
-
-dev_loader = torch.utils.data.DataLoader(dataset=dev_tweets, 
-                                           batch_size=batch_size, 
-                                           shuffle=True)
-
-test_loader = torch.utils.data.DataLoader(dataset=test_tweets, 
-                                          batch_size=batch_size, 
-                                          shuffle=False)
-
-examples = iter(test_loader)
-example_data, example_targets = examples.next()
-
+def tensor_desc(x):
+    """ Inspects a tensor: prints its type, shape and content"""
+    print("Type:   {}".format(x.type()))
+    print("Size:   {}".format(x.size()))
+    print("Values: {}".format(x))
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, num_classes):
@@ -63,14 +28,117 @@ class LSTM(nn.Module):
         
         return out
 
-#model = LSTM()
+def train(model,data_loader,device, criterion,optimizer,embeddings):
 
-#load embeddings
-embeddings = gensim.models.KeyedVectors.load_word2vec_format('data\word2vec\glove.twitter.27B.25d.txt')
+    # Train the model
+    n_total_steps = len(train_loader)
+    for epoch in range(num_epochs):
+        for i, (data, labels) in enumerate(train_loader):  
+            data = data.to(device)
+            labels = labels.to(device)
+        
+            # Forward pass; if IGNORE skip word, else feed model with embedding
+        
+            outputs = model(data)
+            loss = criterion(outputs, labels)
+        
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        
+            if (i+1) % 100 == 0:
+                print (f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{n_total_steps}], Loss: {loss.item():.4f}')
+        test(model,dev_loader,device,criterion,optimizer,embeddings)
+
+def test(model,dev_loader,device,criterion,optimizer,embeddings):
+    # Test the model \w (dev_loader)
+    # In test phase, we don't need to compute gradients (for memory efficiency)
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+        for data, labels in test_loader:
+            data = data.to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            # max returns (value ,index)
+            _, predicted = torch.max(outputs.data, 1)
+            n_samples += labels.size(0)
+            n_correct += (predicted == labels).sum().item()
+
+        acc = 100.0 * n_correct / n_samples
+        print(f'Accuracy of the network on the 10000 test images: {acc} %')
 
 
+def load_data():
+    #Load data
+    glove_path = 'embeds.txt'
+    dataset = pd.read_csv('data/training.tsv', sep='\t')
+    all_tweets = dataset['tweet'].to_numpy()
+    all_labels = dataset['subtask_a'].to_numpy()
+    test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:,1]
+    #load embeddings
+    embeddings = KeyedVectors.load_word2vec_format(glove_path)
+    embedded_words,_ = get_embedded_words(glove_path)
 
-# Loss and optimizer
+    #preprocessing 
+    all_tweets = apply_preprocessing(all_tweets)
+    test_tweets = apply_preprocessing(test_tweets)
+    ignore_words(all_tweets,test_tweets, embedded_words) 
+    test_labels = pd.read_csv('data/labels-levela.csv').to_numpy()[:,1]
+    dev_tweets = all_tweets[:1000]
+    dev_labels = all_labels[:1000]
+    train_tweets = all_tweets[1000:]
+    train_labels = all_labels[1000:]    
+    
+    return train_tweets,train_labels,dev_tweets,dev_labels,test_tweets,test_labels,embeddings
+#load
+train_tweets,train_labels,dev_tweets,dev_labels,test_tweets,test_labels,embeddings = load_data()
+
+
+#Data Loaders
+batch_size = 1
+train_loader = torch.utils.data.DataLoader(dataset=train_tweets, 
+                                           batch_size=batch_size, 
+                                           shuffle=True)
+
+dev_loader = torch.utils.data.DataLoader(dataset=dev_tweets, 
+                                           batch_size=batch_size, 
+                                           shuffle=True)
+
+test_loader = torch.utils.data.DataLoader(dataset=test_tweets, 
+                                          batch_size=batch_size, 
+                                          shuffle=False)
+
+examples = iter(train_loader)
+example_data, example_targets = examples.next()
+
+model = LSTM()
+
+#Hyperparameters
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  
+torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+
+train(model,train_loader,device,criterion,optimizer,loss)
+
+
+# Test the model \w (dev_loader)
+# In test phase, we don't need to compute gradients (for memory efficiency)
+with torch.no_grad():
+    n_correct = 0
+    n_samples = 0
+    for images, labels in test_loader:
+        images = images.reshape(-1, 28*28).to(device)
+        labels = labels.to(device)
+        outputs = model(images)
+        # max returns (value ,index)
+        _, predicted = torch.max(outputs.data, 1)
+        n_samples += labels.size(0)
+        n_correct += (predicted == labels).sum().item()
+
+    acc = 100.0 * n_correct / n_samples
+    print(f'Accuracy of the network on the 10000 test images: {acc} %')
+
 

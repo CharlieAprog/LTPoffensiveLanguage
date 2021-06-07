@@ -46,10 +46,73 @@ def build_vocab(sentences, verbose =  True):
 
 def apply_preprocessing(dataset):
     table = str.maketrans('', '', "!#$%&'()*+-./’:;<=>?[\]^_`{|}~")
+    #mapping = str.maketrans('twitteruser', "@USER")
+    dataset = [w.replace("@USER","twitteruser") for w in dataset]
     dataset = [w.translate(table) for w in dataset]
     dataset = [word.lower() for word in dataset]
     dataset = [word_tokenize(sentence) for sentence in dataset]
     return dataset
+
+def gather_words(all_tweets, test_tweets):
+    words = []
+    for tweet in apply_preprocessing(all_tweets):
+        for word in tweet:
+            words.append(word)
+        
+    for tweet in apply_preprocessing(test_tweets):
+        for word in tweet:
+            words.append(word)
+    return words
+
+def clean_embeddings(path, words):
+    embedded_words = []
+    embedded_vecs = []
+        
+    text_file = open(path, "r")
+    lines = text_file.readlines()
+    for line in tqdm(lines):
+        line = line.split(' ')
+        word = line[0]
+        if word in words and word not in embedded_words:
+            embedded_words.append(word)
+            embedded_vecs.append(line[1:])
+
+    size = len(embedded_words)
+    f = open("embeds.txt", "w+")
+    f.write(f'{size} 25\n')
+    for i in tqdm(range(size)):
+        f.write(f'{embedded_words[i]} ') 
+        for element in embedded_vecs[i]:
+            f.write(f'{element} ') 
+        f.write(f'\n')
+    f.close()
+    
+def get_embedded_words(path):
+    text_file = open(path, "r",encoding = 'utf-8' )
+    lines = text_file.readlines()
+    embedded_words = []
+    embedded_vecs = []
+    for line in tqdm(lines):
+        line = line.split(' ')
+        embedded_words.append(line[0])
+        embedded_vecs.append(line[1:])
+    return embedded_words, embedded_vecs
+        
+def print_missing_embeds(words, embedded_words):
+    for word in words:
+        if word not in embedded_words:
+            print(word)
+    pass
+
+def ignore_words(all_tweets, test_tweets, embedded_words):
+    for i in range(len(all_tweets)):
+        for j in range(len(all_tweets[i])):
+            if all_tweets[i][j] not in embedded_words:
+                all_tweets[i][j] = 'ignorethisword'
+    for i in range(len(test_tweets)):
+        for j in range(len(test_tweets[i])):
+            if test_tweets[i][j] not in embedded_words:
+                test_tweets[i][j] = 'ignorethisword'
 
 
 if __name__ == "__main__":
@@ -63,24 +126,26 @@ if __name__ == "__main__":
     sentences = [word_tokenize(sentence) for sentence in all_tweets]
     vocab = build_vocab(sentences)
     print({k: vocab[k] for k in list(vocab)[:50]})
-    #print(sentences)
 
     #import GLOVE cleaned up glove embeddings
     glovepath = 'embeds.txt'
     print('loading embeddings...')
     embeddings_index = KeyedVectors.load_word2vec_format(glovepath, binary=False)
+    embedded_words, embedded_vectors = get_embedded_words(glovepath)
     oov = check_coverage(vocab,embeddings_index)
 
     #remove punctuations,lowerize words, tokenize sentences into words
     all_tweets = apply_preprocessing(all_tweets)
     test_tweets = apply_preprocessing(test_tweets)
-    print(test_tweets[0])
-
+    
     #check embeddings for words in dataset after preprocessing
     newvocab=build_vocab(all_tweets)
     check_coverage(newvocab,embeddings_index)
 
-    print(newvocab)
+    #remove all of the words that do not occur in the 
+    ignore_words(all_tweets, test_tweets, embedded_words)
+
+    #print(newvocab)
     #data split into dev and train
     dev_tweets = all_tweets[:1000]
     dev_labels = all_labels[:1000]
