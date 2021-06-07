@@ -1,3 +1,4 @@
+from numpy.lib import twodim_base
 import pandas as pd
 import numpy as np
 import torch
@@ -70,75 +71,57 @@ def test(model,dev_loader,device,criterion,optimizer,embeddings):
         print(f'Accuracy of the network on the 10000 test images: {acc} %')
 
 
-def load_data():
-    #Load data
-    glove_path = 'embeds.txt'
-    dataset = pd.read_csv('data/training.tsv', sep='\t')
-    all_tweets = dataset['tweet'].to_numpy()
-    all_labels = dataset['subtask_a'].to_numpy()
-    test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:,1]
-    #load embeddings
-    embeddings = KeyedVectors.load_word2vec_format(glove_path)
-    embedded_words,_ = get_embedded_words(glove_path)
+if __name__ == '__main__':
 
-    #preprocessing 
-    all_tweets = apply_preprocessing(all_tweets)
-    test_tweets = apply_preprocessing(test_tweets)
-    ignore_words(all_tweets,test_tweets, embedded_words) 
-    test_labels = pd.read_csv('data/labels-levela.csv').to_numpy()[:,1]
-    dev_tweets = all_tweets[:1000]
-    dev_labels = all_labels[:1000]
-    train_tweets = all_tweets[1000:]
-    train_labels = all_labels[1000:]    
-    
-    return train_tweets,train_labels,dev_tweets,dev_labels,test_tweets,test_labels,embeddings
-#load
-train_tweets,train_labels,dev_tweets,dev_labels,test_tweets,test_labels,embeddings = load_data()
+    #load
+    training_set, dev_set, test_set, vocab, embeddings = load_data()
+    train_tweets, train_labels = training_set
+    dev_tweets, dev_labels = dev_set
+    test_tweets, test_labels = test_set
 
+    #Data Loaders
+    batch_size = 1
+    train_loader = torch.utils.data.DataLoader(dataset=train_tweets, 
+                                            batch_size=batch_size, 
+                                            shuffle=True)
 
-#Data Loaders
-batch_size = 1
-train_loader = torch.utils.data.DataLoader(dataset=train_tweets, 
-                                           batch_size=batch_size, 
-                                           shuffle=True)
+    dev_loader = torch.utils.data.DataLoader(dataset=dev_tweets, 
+                                            batch_size=batch_size, 
+                                            shuffle=True)
 
-dev_loader = torch.utils.data.DataLoader(dataset=dev_tweets, 
-                                           batch_size=batch_size, 
-                                           shuffle=True)
+    test_loader = torch.utils.data.DataLoader(dataset=test_tweets, 
+                                            batch_size=batch_size, 
+                                            shuffle=False)
 
-test_loader = torch.utils.data.DataLoader(dataset=test_tweets, 
-                                          batch_size=batch_size, 
-                                          shuffle=False)
+    examples = iter(train_loader)
+    example_data, example_targets = examples.next()
 
-examples = iter(train_loader)
-example_data, example_targets = examples.next()
+    model = LSTM()
 
-model = LSTM()
-
-#Hyperparameters
-criterion = nn.CrossEntropyLoss()
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  
-torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    #Hyperparameters
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  
+    torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-train(model,train_loader,device,criterion,optimizer,loss)
+    train(model,train_loader,device,criterion,optimizer,loss)
 
 
-# Test the model \w (dev_loader)
-# In test phase, we don't need to compute gradients (for memory efficiency)
-with torch.no_grad():
-    n_correct = 0
-    n_samples = 0
-    for images, labels in test_loader:
-        images = images.reshape(-1, 28*28).to(device)
-        labels = labels.to(device)
-        outputs = model(images)
-        # max returns (value ,index)
-        _, predicted = torch.max(outputs.data, 1)
-        n_samples += labels.size(0)
-        n_correct += (predicted == labels).sum().item()
+    # Test the model \w (dev_loader)
+    # In test phase, we don't need to compute gradients (for memory efficiency)
+    with torch.no_grad():
+        n_correct = 0
+        n_samples = 0
+        for images, labels in test_loader:
+            images = images.reshape(-1, 28*28).to(device)
+            labels = labels.to(device)
+            outputs = model(images)
+            # max returns (value ,index)
+            _, predicted = torch.max(outputs.data, 1)
+            n_samples += labels.size(0)
+            n_correct += (predicted == labels).sum().item()
 
-    acc = 100.0 * n_correct / n_samples
-    print(f'Accuracy of the network on the 10000 test images: {acc} %')
+        acc = 100.0 * n_correct / n_samples
+        print(f'Accuracy of the network on the 10000 test images: {acc} %')
 
 
