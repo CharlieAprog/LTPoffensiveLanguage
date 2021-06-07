@@ -52,7 +52,7 @@ def apply_preprocessing(dataset):
     return dataset
 
 
-if __name__ == "__main__":
+def load_data():
 
     dataset = pd.read_csv('data/training.tsv', sep='\t')
     all_tweets = dataset['tweet'].to_numpy()
