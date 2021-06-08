@@ -8,6 +8,10 @@ from nltk import sent_tokenize
 from gensim.models import KeyedVectors
 from nltk.tokenize import word_tokenize
 import operator 
+import torch
+from torch.utils.data import DataLoader, Dataset 
+import numpy as np
+IGNORE_IDX = -100
 
 def check_coverage(vocab,embeddings_index):
     print('checking coverage...')
@@ -108,16 +112,13 @@ def print_missing_embeds(words, embedded_words):
             print(word)
     pass
 
-def ignore_words(all_tweets, test_tweets, embedded_words):
+def ignore_words(tweets, embedded_words):
     print('ignoring unknown words...')
-    for i in tqdm(range(len(all_tweets))):
-        for j in range(len(all_tweets[i])):
-            if all_tweets[i][j] not in embedded_words:
-                all_tweets[i][j] = 'ignorethisword'
-    for i in tqdm(range(len(test_tweets))):
-        for j in range(len(test_tweets[i])):
-            if test_tweets[i][j] not in embedded_words:
-                test_tweets[i][j] = 'ignorethisword'
+    for i in tqdm(range(len(tweets))):
+        for j in range(len(tweets[i])):
+            if tweets[i][j] not in embedded_words:
+                tweets[i][j] = 'ignoreword'
+
 
 
 def load_data():
@@ -137,7 +138,9 @@ def load_data():
     #preprocess tweets i.e lowercase, remove punctuation, remove words that are not in embeddings
     all_tweets = apply_preprocessing(all_tweets)
     test_tweets = apply_preprocessing(test_tweets)
-    ignore_words(all_tweets, test_tweets, embedded_words)
+    ignore_words(all_tweets, embedded_words)
+    ignore_words(test_tweets, embedded_words)
+
     #vocabulary of dataset
     newvocab=build_vocab(all_tweets)
     check_coverage(newvocab,embeddings)
@@ -145,8 +148,36 @@ def load_data():
     dev_labels = all_labels[:1000]
     train_tweets = all_tweets[1000:]
     train_labels = all_labels[1000:]
-    training_set = (train_tweets,train_labels)
-    dev_set = (dev_tweets, dev_labels)
-    test_set = (test_tweets, test_labels)
+    training_set = [(train_tweets[index],train_labels[index]) for index in range(len(train_tweets)-1)]
+    dev_set =  [(dev_tweets[index],dev_labels[index]) for index in range(len(dev_labels)-1)]
+    test_set =  [(test_tweets[index],test_labels[index]) for index in range(len(test_labels)-1)]
     return training_set, dev_set, test_set, newvocab, embeddings
+
+class MyList(list):
+    def ljust(self, n, fillvalue=''):
+        return self + [fillvalue] * (n - len(self))
+
+def padding_collate_fn(batch):
+    """ Pads data with zeros to size of longest sentence in batch. """
+    data, labels = zip(*batch)
+    largest_sample = max([len(d) for d in data])
+    padded_data = []
+    for i, sample in enumerate(data):
+        new_list = MyList(sample)
+        padded_data.append(new_list.ljust(largest_sample, 'ignoreword'))
+    return padded_data, labels
+
+# def padding_collate_fn_np(batch):
+#     """ Pads data with zeros to size of longest sentence in batch. """
+#     data, labels = zip(*batch)
+#     largest_sample = max([len(d) for d in data])
+#     padded_data = np.zeros((len(data), largest_sample))
+#     padded_labels = np.full_like(padded_data,'ignoreword')
+
     
+#     for i, sample in enumerate(data):
+#         padded_data[i, :len(sample)] = sample
+#         padded_labels[i, :len(sample)] = labels[i]
+#     padded_data = torch.from_numpy(padded_data)
+#      padded_labels = torch.from_numpy(padded_data)
+#     return padded_data, padded_labels
