@@ -122,6 +122,7 @@ def ignore_words(tweets, embedded_words):
 
 
 def load_data():
+
     print('reading data...')
     dataset = pd.read_csv('data/training.tsv', sep='\t')
     all_tweets = dataset['tweet'].to_numpy()
