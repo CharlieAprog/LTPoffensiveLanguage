@@ -13,10 +13,10 @@ def encode_data(target):
     for sentences in target['tweet']:
         encode = tokenizer.encode_plus(
             text=sentences,
-            add_special_tokens=False,
+            add_special_tokens=True,
             max_length=103,
             pad_to_multiple_of=103,
-            return_attention_mask=False,
+            return_attention_mask=True,
             return_tensors='pt',
             truncation=True
         )
