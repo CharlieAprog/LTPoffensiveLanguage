@@ -120,7 +120,6 @@ def ignore_words(tweets, embedded_words):
                 tweets[i][j] = 'ignoreword'
 
 
-
 def load_data():
 
     print('reading data...')
@@ -138,6 +137,12 @@ def load_data():
 
     #preprocess tweets i.e lowercase, remove punctuation, remove words that are not in embeddings
     all_tweets = apply_preprocessing(all_tweets)
+    max_len = 0
+    for tweet in all_tweets:
+        lenx = len(tweet)
+        if lenx > max_len:
+            max_len = lenx
+    print(max_len)
     test_tweets = apply_preprocessing(test_tweets)
     ignore_words(all_tweets, embedded_words)
     ignore_words(test_tweets, embedded_words)
