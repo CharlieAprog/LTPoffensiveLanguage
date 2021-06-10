@@ -18,31 +18,67 @@ def encode_data(target, tokenizer):
             max_length=103,
             pad_to_multiple_of=103,
             return_attention_mask=True,
-            return_tensors='pt',
+            return_tensors='np',
             truncation=True
         )
 
         ids.append(encode['input_ids'])
 
     return ids
+def create_token2idx(train_data):
+    unique_tokens = []
+    token2idx = {}
+    index_cnt = 0
+
+    # create a dict that does token2idx
+    for tweet in train_data:
+        for token in tweet:
+            if token not in unique_tokens:
+                unique_tokens.append(token)
+                token2idx[token] = index_cnt
+                index_cnt += 1
+
+    return token2idx, index_cnt
+
+def change_tokens2idx(data, token2idx, unknown_idx):
+
+    for idx_tweet in range(len(data)):
+        for idx_token in range(103):
+            # check for tokens that are in test set but not in training
+            if data[idx_tweet][idx_token] in token2idx.keys():
+                data[idx_tweet][idx_token] = token2idx[data[idx_tweet][idx_token]]
+            else:
+                data[idx_tweet][idx_token] = unknown_idx
+    return data
 
 
 def read_tokenized_data():
     tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
 
     train_data = pd.read_csv('data/training.tsv', sep='\t')
-    train_tweets = train_data['tweet']
-    train_labels = train_data['subtask_a']
+    train_tweets = train_data['tweet'].to_numpy()
+    train_labels = train_data['subtask_a'].to_numpy()
     test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t')
     test_labels = pd.read_csv('data/labels-levela.csv', header=None).to_numpy()[:, 1]
 
     train_ids = encode_data(train_tweets, tokenizer)
     test_ids = encode_data(test_tweets['tweet'], tokenizer)
+    # get rid of the weird middle dim
+    test_better_dim = []
+    for i in range(len(test_ids)):
+        test_better_dim.append(test_ids[i][0])
+    train_better_dim = []
+    for i in range(len(train_ids)):
+        train_better_dim.append(train_ids[i][0])
+    # convert all tokens to indexes
+    token2idx, unknown_idx = create_token2idx(train_better_dim)
+    train_tweets = change_tokens2idx(train_better_dim, token2idx, unknown_idx)
+    test_tweets = change_tokens2idx(test_better_dim, token2idx, unknown_idx)
 
-    training_set = [(train_ids[index], train_labels[index]) for index in range(0, len(train_tweets) - 1)]
-    test_set = [(test_ids[index], test_labels[index]) for index in range(0, len(test_tweets['tweet']) - 1)]
+    training_set = [(train_tweets[index], train_labels[index]) for index in range(0, len(train_tweets) - 1)]
+    test_set = [(test_tweets[index], test_labels[index]) for index in range(0, len(test_tweets) - 1)]
 
-    return training_set, test_set
+    return training_set, test_set, unknown_idx
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'

@@ -47,9 +47,10 @@ class CTransformer(nn.Module):
         :return: predicted log-probability vectors for each token based on the preceding tokens.
         """
         # we might be able to just comment token embeddings and use out word2vec embeds
-        # tokens = self.token_embedding(x)
+        tokens = self.token_embedding(x)
         # if input is of dim [batch, token, emb] this should work fine
-        tokens = x
+        # tokens = x
+        print(tokens)
         b, t, e = tokens.size()
 
         positions = self.pos_embedding(torch.arange(t, device=d()))[None, :, :].expand(b, t, e)

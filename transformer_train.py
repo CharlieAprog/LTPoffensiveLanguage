@@ -27,16 +27,11 @@ def train(model, train_dl, num_epochs, lr, device):
     # this gives errors atm
     # TODO figure out how to pass input to the model also check transformer_models (forward and init)
     for epoch in range(num_epochs):
+        unique_tokens = []
         for batch_idx, (data, labels) in enumerate(train_dl):
             opt.zero_grad()
-            embdata = convert_into_embeddings(data)
-            # data = [embeddings.get_vector(word) for word in sentence for sentence in data]
-            # print(embdata)
-            x_tensor = torch.tensor(embdata, dtype=torch.float32).to(device)
+            x_tensor = data.to(device)
             y_tensor = torch.tensor([get_label(label[0]) for label in labels]).to(device)
-            # print(data)
-            # print(len(x_tensor))
-            # print(y_tensor)
             out = model(x_tensor)
             loss = crit(out, y_tensor)
             loss.backward()
@@ -45,26 +40,17 @@ def train(model, train_dl, num_epochs, lr, device):
 
 
 
+
 if __name__ == '__main__':
     nltk.download('punkt')
     batch_size = 1
 
-    train_data, test_data = read_tokenized_data()
+    train_data, test_data, num_tokens = read_tokenized_data()
+
     train_dl = torch.utils.data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
     test_dl = torch.utils.data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
-    unique_tokens = []
-    #print(train_data[0])
-    for idx, (tweet, label) in enumerate(train_dl):
-        for i in range(len(tweet[0][0])):
-            if tweet[0][0][i] not in unique_tokens:
-                unique_tokens.append(tweet[0][0][i])
-    print(len(unique_tokens))
-    for idx, (tweet, label) in enumerate(test_dl):
-        print(tweet[0][0])
-        print(label)
-        break
-    print(len(train_dl))
-    print(len(test_dl))
+
+
 
     # copied the paramters that the transformer requires
     """
@@ -86,14 +72,16 @@ if __name__ == '__main__':
     # seq_length = max number of words (vectors) in a tweet
     #
     # HYPERPARAMETERS
-    embed_size = 100
+    embed_size = 200
     heads = 5
     depth = 3
     seq_length = 103
-    num_tokens = 16000
+    # num_tokens = 14656
+    num_tokens = 14656
     num_classes = 2
     # need to make sure that emb / heads is an int
-    model = CTransformer(embed_size, heads, depth, seq_length, num_tokens, num_classes=num_classes)
+    # emb, heads, depth, seq_length, num_tokens, num_classes, max_pool = True, dropout = 0.0,
+    model = CTransformer(embed_size, heads, depth, seq_length=seq_length, num_tokens=num_tokens, num_classes=num_classes)
 
     train(model, train_dl, num_epochs=1, lr=1, device=device)
 
