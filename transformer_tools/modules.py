@@ -490,3 +490,19 @@ class TransformerBlock(nn.Module):
         )
 
         self.do = nn.Dropout(dropout)
+
+    def forward(self, x):
+
+        attended = self.attention(x)
+
+        x = self.norm1(attended + x)
+
+        x = self.do(x)
+
+        fedforward = self.ff(x)
+
+        x = self.norm2(fedforward + x)
+
+        x = self.do(x)
+
+        return x
