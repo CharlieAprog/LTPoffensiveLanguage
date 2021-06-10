@@ -11,23 +11,12 @@ def get_label(y):
         return 1
     return 0
 
-def convert_into_embeddings(data):
-    embdata= []
-    for sentences in data:
-        sentence = []
-        for words in sentences:
-            sentence.append(embeddings[words])
-        embdata.append(sentence)
-    return embdata
-
 def train(model, train_dl, num_epochs, lr, device):
-
+    model.to(device)
     opt = torch.optim.Adam(params=model.parameters(), lr=lr)
     crit = nn.NLLLoss()
-    # this gives errors atm
-    # TODO figure out how to pass input to the model also check transformer_models (forward and init)
+
     for epoch in range(num_epochs):
-        unique_tokens = []
         for batch_idx, (data, labels) in enumerate(train_dl):
             opt.zero_grad()
             x_tensor = data.to(device)
@@ -36,10 +25,6 @@ def train(model, train_dl, num_epochs, lr, device):
             loss = crit(out, y_tensor)
             loss.backward()
             opt.step()
-
-
-
-
 
 if __name__ == '__main__':
     nltk.download('punkt')
@@ -50,22 +35,7 @@ if __name__ == '__main__':
     train_dl = torch.utils.data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
     test_dl = torch.utils.data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
-
-
-    # copied the paramters that the transformer requires
-    """
-    :param emb: Embedding dimension
-    :param heads: nr. of attention heads
-    :param depth: Number of transformer blocks
-    :param seq_length: Expected maximum sequence length
-    :param num_tokens: Number of tokens (usually words) in the vocabulary
-    :param num_classes: Number of classes.
-    :param max_pool: If true, use global max pooling in the last layer. If false, use global
-                     average pooling.
-    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    # paramters might make so sense this way especially look into embed dims and max sequence length
-    # TODO
     # we need to give the transformer:
     # emb = dimmension of every word embedding
     # num_tokens = how many word (different vectors) do we have in the embedings
@@ -76,7 +46,6 @@ if __name__ == '__main__':
     heads = 5
     depth = 3
     seq_length = 103
-    # num_tokens = 14656
     num_tokens = 14656
     num_classes = 2
     # need to make sure that emb / heads is an int

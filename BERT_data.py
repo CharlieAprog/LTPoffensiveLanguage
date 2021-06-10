@@ -25,6 +25,7 @@ def encode_data(target, tokenizer):
         ids.append(encode['input_ids'])
 
     return ids
+
 def create_token2idx(train_data):
     unique_tokens = []
     token2idx = {}
@@ -41,7 +42,6 @@ def create_token2idx(train_data):
     return token2idx, index_cnt
 
 def change_tokens2idx(data, token2idx, unknown_idx):
-
     for idx_tweet in range(len(data)):
         for idx_token in range(103):
             # check for tokens that are in test set but not in training
@@ -78,43 +78,42 @@ def read_tokenized_data():
     training_set = [(train_tweets[index], train_labels[index]) for index in range(0, len(train_tweets) - 1)]
     test_set = [(test_tweets[index], test_labels[index]) for index in range(0, len(test_tweets) - 1)]
 
-    return training_set, test_set, unknown_idx
+    return training_set, test_set
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
 
-    dataset = pd.read_csv('data/training.tsv', sep='\t')
-    all_tweets = dataset['tweet'].to_numpy()
-    all_labels = dataset['subtask_a'].to_numpy()
-    test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t').to_numpy()[:, 1]
-    test_labels = pd.read_csv('data/labels-levela.csv').to_numpy()[:, 1]
+    train_data = pd.read_csv('data/training.tsv', sep='\t')
+    train_labels = train_data['subtask_a']
+    test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t')
+    test_labels = pd.read_csv('data/labels-levela.csv', header=None).to_numpy()[:, 1]
 
-    train_ids = encode_data(train_data)
-    test_ids = encode_data(test_tweets)
+    train_ids = encode_data(train_data, tokenizer)
+    test_ids = encode_data(test_tweets, tokenizer)
 
     dev_ids = train_ids[:1000]
     dev_labels = train_labels[:1000]
 
     train_ids = train_ids[1000:]
     train_labels = train_labels[1000:]
-    print(train_ids)
+
     df = pd.DataFrame({
         "train_encoding": train_ids,
         "train_labels": train_labels
     })
-    # df.to_csv('bert_train.csv')
+    df.to_csv('bert_train.csv')
 
     df = pd.DataFrame({
         "dev_encoding": dev_ids,
         "dev_labels": dev_labels
     })
-    # df.to_csv('bert_dev.csv')
+    df.to_csv('bert_dev.csv')
 
     df = pd.DataFrame({
         "test_encoding": test_ids,
         "test_labels": test_labels
     })
 
-    # df.to_csv('bert_test.csv')
+    df.to_csv('bert_test.csv')
