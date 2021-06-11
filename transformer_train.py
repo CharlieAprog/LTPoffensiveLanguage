@@ -30,9 +30,10 @@ if __name__ == '__main__':
     nltk.download('punkt')
     batch_size = 1
 
-    train_data, test_data, num_tokens = read_tokenized_data()
+    train_data, dev_data, test_data = read_tokenized_data()
 
     train_dl = torch.utils.data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+    dev_dl = torch.utils.data.DataLoader(dataset=dev_data, batch_size=batch_size, shuffle=True)
     test_dl = torch.utils.data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,12 +47,12 @@ if __name__ == '__main__':
     heads = 5
     depth = 3
     seq_length = 103
-    num_tokens = 14656
+    num_tokens = 14297
     num_classes = 2
     # need to make sure that emb / heads is an int
     # emb, heads, depth, seq_length, num_tokens, num_classes, max_pool = True, dropout = 0.0,
     model = CTransformer(embed_size, heads, depth, seq_length=seq_length, num_tokens=num_tokens, num_classes=num_classes)
 
-    train(model, train_dl, num_epochs=1, lr=1, device=device)
+    #train(model, train_dl, num_epochs=1, lr=1, device=device)
 
 

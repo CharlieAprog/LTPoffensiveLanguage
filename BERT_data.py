@@ -67,18 +67,26 @@ def read_tokenized_data():
     test_better_dim = []
     for i in range(len(test_ids)):
         test_better_dim.append(test_ids[i][0])
+    dev_set = []
+    for x in range(1000):
+        dev_set.append(train_ids[x][0])
     train_better_dim = []
-    for i in range(len(train_ids)):
+    for i in range(1000, len(train_ids)):
         train_better_dim.append(train_ids[i][0])
     # convert all tokens to indexes
     token2idx, unknown_idx = create_token2idx(train_better_dim)
     train_tweets = change_tokens2idx(train_better_dim, token2idx, unknown_idx)
+    dev_tweets = change_tokens2idx(dev_set, token2idx, unknown_idx)
     test_tweets = change_tokens2idx(test_better_dim, token2idx, unknown_idx)
 
+    dev_labels = train_labels[0:1000]
+    train_labels = train_labels[1000:]
+
     training_set = [(train_tweets[index], train_labels[index]) for index in range(0, len(train_tweets) - 1)]
+    dev_set1 = [(dev_tweets[index], dev_labels[index]) for index in range(0, len(dev_tweets) - 1)]
     test_set = [(test_tweets[index], test_labels[index]) for index in range(0, len(test_tweets) - 1)]
 
-    return training_set, test_set
+    return training_set, dev_set1, test_set
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
