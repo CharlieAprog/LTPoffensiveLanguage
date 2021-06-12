@@ -173,17 +173,3 @@ def padding_collate_fn(batch):
         padded_data.append(new_list.ljust(largest_sample, 'ignoreword'))
     return padded_data, labels
 
-# def padding_collate_fn_np(batch):
-#     """ Pads data with zeros to size of longest sentence in batch. """
-#     data, labels = zip(*batch)
-#     largest_sample = max([len(d) for d in data])
-#     padded_data = np.zeros((len(data), largest_sample))
-#     padded_labels = np.full_like(padded_data,'ignoreword')
-
-    
-#     for i, sample in enumerate(data):
-#         padded_data[i, :len(sample)] = sample
-#         padded_labels[i, :len(sample)] = labels[i]
-#     padded_data = torch.from_numpy(padded_data)
-#      padded_labels = torch.from_numpy(padded_data)
-#     return padded_data, padded_labels

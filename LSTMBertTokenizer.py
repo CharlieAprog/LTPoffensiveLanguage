@@ -3,8 +3,9 @@ import pandas as pd
 import numpy as np
 import torch
 from torch import nn
+import torch.nn.functional as F
 from preprocess import * 
-from gensim.models import KeyedVectors
+from BERT_data import *
 
 def tensor_desc(x):
     """ Inspects a tensor: prints its type, shape and content"""
@@ -18,65 +19,53 @@ def get_label(y):
     return 0
 
 class LSTM(nn.Module):
-    def __init__(self, input_size, hidden_size, num_layers, num_classes):
+    def __init__(self, input_size, hidden_size, vocab_size, num_layers, num_classes, dropout = 0.0):
         super(LSTM, self).__init__()
+        
         self.num_layers = num_layers
         self.hidden_size = hidden_size
-        self.lstm = nn.LSTM(input_size,hidden_size,num_layers, batch_first = True) #(for batch fist we need to give the model input size (batchsize, sequence length, input_dim)
+        self.lstm = nn.LSTM(input_size,hidden_size,num_layers, batch_first = True, dropout = dropout) #(for batch fist we need to give the model input size (batchsize, sequence length, input_dim)
+        self.token_embedding = nn.Embedding(embedding_dim=input_size, num_embeddings=vocab_size)
         self.fc =  nn.Linear(hidden_size,num_classes)
     
     def forward(self, x):
+        x = self.token_embedding(x)
+        print(x)
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device) 
         out, _ = self.lstm(x, (h0,c0)) 
         
         out = out[:,-1, :]
         out = self.fc(out)
-        
+        out = F.softmax(out)
         return out
 
-def convert_into_embeddings(data):
-    embdata= []
-    for sentences in data:
-        sentence = []
-        for words in sentences:
-            sentence.append(embeddings[words])
-        embdata.append(sentence)
-    return embdata
-
-def train(model,data_loader,device, criterion,optimizer,embeddings, num_epochs):
-
+def train(model,train_dl,dev_dl,device, criterion,optimizer, num_epochs):
     # Train the model
-    n_total_steps = len(data_loader)
+    n_total_steps = len(train_dl)
     for epoch in range(num_epochs):
-        for i, (data, labels) in enumerate(train_loader):
-            
-            embdata = convert_into_embeddings(data)
-            #data = [embeddings.get_vector(word) for word in sentence for sentence in data]
-
-            x_tensor = torch.tensor(embdata, dtype=torch.float32).to(device)
+        for i, (data, labels) in enumerate(train_dl):
+            x_tensor = torch.tensor(data).to(device)
             y_tensor = torch.tensor([get_label(label[0]) for label in labels]).to(device)
-
             # Forward pass; if IGNORE skip word, else feed model with embedding
             outputs = model(x_tensor) #(batchsize, sequencesize, vectorsize)
             loss = criterion(outputs, y_tensor)
-        
+
             # Backward and optimize
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             if (i+1) % 100 == 0:
                 print (f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{n_total_steps}], Loss: {loss.item():.4f}')
-        test(model,dev_loader,device,criterion,optimizer,embeddings)
+        test(model,dev_dl,device,criterion,optimizer)
 
-def test(model,dev_loader,device,criterion,optimizer,embeddings):
+def test(model,dev_dl,device,criterion,optimizer):
     # Test the model \w (dev_loader)
     # In test phase, we don't need to compute gradients (for memory efficiency)
     with torch.no_grad():
         n_correct = 0
         n_samples = 0
-        for data, labels in dev_loader:
-            data = convert_into_embeddings(data).to(device)
+        for data, labels in dev_dl:
             data = data.to(device)
             labels = labels.to(device)
             outputs = model(images)
@@ -91,31 +80,35 @@ def test(model,dev_loader,device,criterion,optimizer,embeddings):
 
 if __name__ == '__main__':
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
-    #load
-    training_set, dev_set, test_set, vocab, embeddings = load_data()
-
     #Data Loaders
     batch_size = 2
-    input_size = 25
-    learning_rate = 0.0002
+    embed_size = 200
     hidden_size = 200
-    num_layers = 2
+    num_layers = 3
+    vocab_size = 14297
+    learning_rate = 0.0002
     num_classes = 2
     num_epochs = 1
+    dropout = 0.5
 
-    train_loader = torch.utils.data.DataLoader(dataset=training_set, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
-    dev_loader = torch.utils.data.DataLoader(dataset=dev_set, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
-    test_loader = torch.utils.data.DataLoader(dataset=test_set,collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
+    #load data and create dataloaders
+    train_data, dev_data, test_data = read_tokenized_data()
+    train_dl = torch.utils.data.DataLoader(dataset=train_data, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
+    dev_dl = torch.utils.data.DataLoader(dataset=dev_data, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
+    test_dl = torch.utils.data.DataLoader(dataset=test_data, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
 
-    model = LSTM(input_size, hidden_size, num_layers, num_classes).to(device)
-
+    model = LSTM(embed_size, hidden_size, vocab_size, num_layers, num_classes, dropout = dropout).to(device)
+    #example batch
+    data,label  =  next(iter(train_dl))
+    print(data)
+    
     #Hyperparameters
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(ignore_index = 26)
     optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  
     torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-    train(model,train_loader,device,criterion,optimizer,embeddings, num_epochs)
+    train(model,train_dl,dev_dl,device,criterion,optimizer, num_epochs)
 
 
     # Test the model \w (dev_loader)
@@ -123,7 +116,7 @@ if __name__ == '__main__':
     with torch.no_grad():
         n_correct = 0
         n_samples = 0
-        for images, labels in test_loader:
+        for images, labels in test_dl:
             images = images.reshape(-1, 28*28).to(device)
             labels = labels.to(device)
             outputs = model(images)
