@@ -4,6 +4,9 @@ import numpy as np
 from torch.utils.data import DataLoader
 from transformers import BertTokenizer, BertForSequenceClassification
 import pandas as pd
+import emoji
+from wordsegment import load, segment
+load()
 # from dataloading import POSDataset, padding_collate_fn, IDX2POS, IGNORE_IDX
 
 
@@ -52,6 +55,58 @@ def change_tokens2idx(data, token2idx, unknown_idx):
     return data
 
 
+
+def emoji2word(sents):
+    return [emoji.demojize(sent) for sent in sents]
+
+def remove_useless_punctuation(sents):
+    for i, sent in enumerate(sents):
+        sent = sent.replace(':', ' ')
+        sent = sent.replace('_', ' ')
+        sent = sent.replace('...', ' ')
+        sents[i] = sent
+    return sents
+
+def remove_replicates(sents):
+    # if there are multiple `@USER` tokens in a tweet, replace it with `@USERS`
+    # because some tweets contain so many `@USER` which may cause redundant
+    for i, sent in enumerate(sents):
+        if sent.find('@USER') != sent.rfind('@USER'):
+            sents[i] = sent.replace('@USER', '')
+            sents[i] = '@USERS ' + sents[i]
+    return sents
+
+def replace_rare_words(sents):
+    rare_words = {
+        'URL': 'http',
+        'MAGA': 'maga',
+        'LOSER': 'loser'
+    }
+    for i, sent in enumerate(sents):
+        for w in rare_words.keys():
+            sents[i] = sent.replace(w, rare_words[w])
+    return sents
+
+def segment_hashtag(sents):
+    # E.g. '#LunaticLeft' => 'lunatic left'
+    for i, sent in enumerate(sents):
+        sent_tokens = sent.split(' ')
+        for j, t in enumerate(sent_tokens):
+            if t.find('#') == 0:
+                sent_tokens[j] = ' '.join(segment(t))
+        sents[i] = ' '.join(sent_tokens)
+    return sents
+
+def process_tweets(tweets):
+    # Process tweets
+    tweets = emoji2word(tweets)
+    tweets = replace_rare_words(tweets)
+    tweets = remove_replicates(tweets)
+    tweets = segment_hashtag(tweets)
+    tweets = remove_useless_punctuation(tweets)
+    tweets = np.array(tweets)
+    return tweets
+
 def read_tokenized_data():
     tokenizer = BertTokenizer.from_pretrained('bert-base-cased')
 
@@ -60,9 +115,10 @@ def read_tokenized_data():
     train_labels = train_data['subtask_a'].to_numpy()
     test_tweets = pd.read_csv('data/testset-levela.tsv', sep='\t')
     test_labels = pd.read_csv('data/labels-levela.csv', header=None).to_numpy()[:, 1]
-
+    train_tweets = process_tweets(train_tweets)
+    test_tweets = process_tweets(test_tweets['tweet'])
     train_ids = encode_data(train_tweets, tokenizer)
-    test_ids = encode_data(test_tweets['tweet'], tokenizer)
+    test_ids = encode_data(test_tweets, tokenizer)
     # get rid of the weird middle dim
     test_better_dim = []
     for i in range(len(test_ids)):
