@@ -11,7 +11,7 @@ class CTransformer(nn.Module):
     Transformer for classifying sequences
     """
 
-    def __init__(self, emb, heads, depth, seq_length, num_tokens, num_classes, max_pool=True, dropout=0.0, wide=False):
+    def __init__(self,emb,heads,depth,seq_length,num_tokens,num_classes,lr,L2,max_pool=True,dropout=0.0,wide=False):
         """
         :param emb: Embedding dimension
         :param heads: nr. of attention heads
@@ -41,26 +41,45 @@ class CTransformer(nn.Module):
 
         self.do = nn.Dropout(dropout)
 
+        self.opt = torch.optim.Adam(params=self.parameters(), lr=lr, weight_decay=L2)
+
+    # function to create and load ckpt files
+    def load_checkpoint(self, ckpt_path, map_location=None):
+        ckpt = torch.load(ckpt_path, map_location=map_location)
+        print(' [*] Loading checkpoint from %s succeed!' % ckpt_path)
+        return ckpt
+
+    def save_checkpoint(self, state, save_path):
+        torch.save(state, save_path)
+
+    def load_model(self, ckpt):
+        self.epoch = ckpt['epoch']
+        self.load_state_dict(ckpt['weights'])
+        self.opt.load_state_dict(ckpt['optimizer'])
+
     def forward(self, x):
         """
         :param x: A batch by sequence length integer tensor of token indices.
         :return: predicted log-probability vectors for each token based on the preceding tokens.
         """
-        # we might be able to just comment token embeddings and use out word2vec embeds
+        seqlen = [((x.size()[1] - (batch == 26).sum())) for batch in x]
+
         tokens = self.token_embedding(x)
-        # if input is of dim [batch, token, emb] this should work fine
-        # tokens = x
-        print(tokens)
+
         b, t, e = tokens.size()
 
         positions = self.pos_embedding(torch.arange(t, device=d()))[None, :, :].expand(b, t, e)
+
         x = tokens + positions
+        # make every padding entry 0 before we feed it to the model
+        for i in range(int(seqlen[0]), int(x.size()[1])):
+            x[0][i] = torch.zeros([128])
 
         x = self.do(x)
 
         x = self.tblocks(x)
 
-        x = x.max(dim=1)[0] if self.max_pool else x.mean(dim=1) # pool over the time dimension
+        x = x.max(dim=1)[0] if self.max_pool else x.mean(dim=1)  # pool over the time dimension
 
         x = self.toprobs(x)
 
