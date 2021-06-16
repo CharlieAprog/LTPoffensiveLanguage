@@ -1,3 +1,7 @@
+import os
+import shutil
+import nltk
+from sklearn.metrics import accuracy_score,f1_score
 from numpy.lib import twodim_base
 import pandas as pd
 import numpy as np
@@ -19,15 +23,6 @@ def get_label(y):
         return 1
     return 0
 
-def pad_collate(batch):
-  (xx, yy) = zip(*batch)
-  x_lens = [len(x) for x in xx]
-  y_lens = [len(y) for y in yy]
-  print(x_lens)
-  print(xx,yy)
-  xx_pad = torch.nn.utils.rnn.pad_sequence(xx, batch_first=True, padding_value=26)
-
-  return xx_pad, yy_pad, x_lens, y_lens
 
 class LSTM(nn.Module):
     def __init__(self, input_size, hidden_size, vocab_size, num_layers, num_classes, dropout = 0.0):
@@ -41,12 +36,12 @@ class LSTM(nn.Module):
     
     def forward(self, x):
         seqlen = [((x.size()[1] - (batch==26).sum())) for batch in x]
-        x = self.token_embedding(x)
+        x = self.token_embedding(x.long())
         xpacked = pack_padded_sequence(x, [lis.cpu() for lis in seqlen] , batch_first=True, enforce_sorted= False)
 
         h0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device)
         c0 = torch.zeros(self.num_layers, x.size(0), self.hidden_size).to(device) 
-        wtf, (out,_) = self.lstm(xpacked, (h0,c0)) 
+        var, (out,_) = self.lstm(xpacked, (h0,c0)) 
         
         out = self.fc(out[-1])
         out = torch.sigmoid(out)
@@ -112,9 +107,9 @@ if __name__ == '__main__':
 
     #load data and create dataloaders
     train_data, dev_data, test_data = read_tokenized_data()
-    train_dl = torch.utils.data.DataLoader(dataset=train_data, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
-    dev_dl = torch.utils.data.DataLoader(dataset=dev_data, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
-    test_dl = torch.utils.data.DataLoader(dataset=test_data, collate_fn=padding_collate_fn, batch_size=batch_size, shuffle=True)
+    train_dl = torch.utils.data.DataLoader(dataset=train_data, batch_size=batch_size, shuffle=True)
+    dev_dl = torch.utils.data.DataLoader(dataset=dev_data,batch_size=batch_size, shuffle=True)
+    test_dl = torch.utils.data.DataLoader(dataset=test_data, batch_size=batch_size, shuffle=True)
 
     model = LSTM(embed_size, hidden_size, vocab_size, num_layers, num_classes, dropout = dropout).to(device)
     
@@ -151,5 +146,3 @@ if __name__ == '__main__':
         print(y_pred)
         print(y_true)
         print(f'Accuracy of the network on the 10000 test images: {accuracy_score(y_true,y_pred)} and f1 score: {f1_score(y_true,y_pred)} %')
-
-
