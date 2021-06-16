@@ -43,6 +43,7 @@ def create_token2idx(train_data):
 
     return token2idx, index_cnt
 
+# converts all tokens in the data to indices based on token2idx
 def change_tokens2idx(data, token2idx, unknown_idx):
     for idx_tweet in range(len(data)):
         for idx_token in range(103):
