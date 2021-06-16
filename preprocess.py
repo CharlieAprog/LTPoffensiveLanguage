@@ -5,11 +5,12 @@ from torch.utils.data import DataLoader
 from transformers import BertTokenizer, BertForSequenceClassification
 import pandas as pd
 import emoji
+import nltk
 from wordsegment import load, segment
 load()
 # from dataloading import POSDataset, padding_collate_fn, IDX2POS, IGNORE_IDX
 
-
+nltk.download('punkt')
 def encode_data(target, tokenizer):
     ids = []
 

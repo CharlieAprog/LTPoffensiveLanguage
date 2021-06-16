@@ -1,11 +1,7 @@
-import torch.nn as nn
-from transformer_model import *
+from transformer_tools.transformer_model import *
 from preprocess import *
 from torch.utils.data import DataLoader
-import torchvision.datasets as datasets  # Standard datasets
-import torchvision.transforms as transforms
-import seaborn as sns
-import matplotlib.pyplot as plt
+
 
 def get_label(y):
     if y == 'OFF':
@@ -78,7 +74,7 @@ def train(model, train_dl, dev_dl, test_dl, num_epochs, device):
         acc_list.append(accuracy_this_epoch)
 
 if __name__ == '__main__':
-    nltk.download('punkt')
+
     batch_size = 1
 
     train_data, dev_data, test_data = read_tokenized_data()
