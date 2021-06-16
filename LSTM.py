@@ -6,7 +6,6 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 from preprocess import * 
-from BERT_data import *
 from sklearn.metrics import f1_score,accuracy_score, confusion_matrix
 
 def tensor_desc(x):

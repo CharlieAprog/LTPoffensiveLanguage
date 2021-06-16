@@ -1,7 +1,6 @@
 import torch.nn as nn
 from transformer_model import *
 from preprocess import *
-from BERT_data import *
 from torch.utils.data import DataLoader
 import torchvision.datasets as datasets  # Standard datasets
 import torchvision.transforms as transforms
